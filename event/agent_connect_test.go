@@ -3,7 +3,7 @@ package event
 import (
 	"testing"
 
-	"github.com/bit4bit/gami"
+	"github.com/googolgl/gami"
 )
 
 func TestAgentConnect(t *testing.T) {

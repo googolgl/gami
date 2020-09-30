@@ -11,8 +11,8 @@ Example connecting to Asterisk and Send Action get Events.
 package main
 import (
 	"log"
-	"github.com/bit4bit/gami"
-	"github.com/bit4bit/gami/event"
+	"github.com/googolgl/gami"
+	"github.com/googolgl/gami/event"
 	"time"
 )
 
@@ -98,23 +98,23 @@ CURRENT EVENT TYPES
 
 The events use documentation and struct from *PAMI*.
 
-use **bit4bit/gami/event.New()** for get this struct from raw event
+use **googolgl/gami/event.New()** for get this struct from raw event
 
-EVENT ID          | TYPE TEST  
-----------------  | ---------- 
-*Newchannel*      | YES
-*Newexten*        | YES
-*Newstate*        | YES 
-*Dial*            | YES 
-*ExtensionStatus* | YES 
-*Hangup*          | YES 
-*PeerStatus*      | YES
-*PeerEntry*	      | YES
-*VarSet*          | YES 
-*AgentLogin*      | YES
-*Agents*          | YES
-*AgentLogoff*     | YES
-*AgentConnect*    | YES
+EVENT ID           | TYPE TEST  
+------------------ | ---------- 
+*Newchannel*       | YES
+*Newexten*         | YES
+*Newstate*         | YES 
+*Dial*             | YES 
+*ExtensionStatus*  | YES 
+*Hangup*           | YES 
+*PeerStatus*       | YES
+*PeerEntry*	       | YES
+*VarSet*           | YES 
+*AgentLogin*       | YES
+*Agents*           | YES
+*AgentLogoff*      | YES
+*AgentConnect*     | YES
 *RTPReceiverStats* | YES
-*RTPSenderStats* | YES
-*Bridge* | YES
+*RTPSenderStats*   | YES
+*Bridge*           | YES
