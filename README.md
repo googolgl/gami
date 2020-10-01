@@ -21,8 +21,9 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ami.Run()
 	defer ami.Close()
+
+	ami.Run()
 	
 	//install manager
 	go func() {
@@ -54,23 +55,21 @@ func main() {
 	}
 	
 	
-	if _, errPing := ami.Action("Ping", nil); errPing != nil {
+	if _, errPing := ami.Action(gami.Params{"Action":"Ping"}); errPing != nil {
 		log.Fatal(errPing)
 	}
 	
 	//async actions
-	rsPing, rsErr := ami.AsyncAction("Ping", gami.Params{"ActionID": "pingo"})
+	rsPing, rsErr := ami.AsyncAction(gami.Params{"Action":"Ping","ActionID":"pingo"})
 	if rsErr != nil {
 		log.Fatal(rsErr)
 	}
 						
-	if _, err := ami.Action("Events", gami.Params{"EventMask":"on"}); err != nil {
+	if _, err := ami.Action(gami.Params{"Action":"Events","EventMask":"on"}); err != nil {
 		log.Fatal(err)
 	}
 	
 	log.Println("ping:", <-rsPing)
-	
-
 }
 ```
 

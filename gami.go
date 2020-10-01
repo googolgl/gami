@@ -3,7 +3,6 @@
 // license that can be found in the LICENSE file
 
 // Package gami provites primitives for interacting with Asterisk AMI
-
 package gami
 
 import (
@@ -19,10 +18,11 @@ import (
 	"time"
 )
 
-var errNotEvent = errors.New("Not Event")
-
-// Raise when not response expected protocol AMI
-var ErrNotAMI = errors.New("Server not AMI interface")
+var (
+	errNoAMI         = errors.New("Server doesn`t have AMI interface")
+	errNoEvent       = errors.New("No Event")
+	errInvalidParams = errors.New("Invalid Params")
+)
 
 // Params for the actions
 type Params map[string]string
@@ -67,18 +67,18 @@ type AMIResponse struct {
 // AMIEvent it's a representation of Event readed
 type AMIEvent struct {
 	//Identification of event Event: xxxx
-	ID string
-
+	ID        string
 	Privilege []string
-
 	// Params  of arguments received
 	Params map[string]string
 }
 
+//UseTLS
 func UseTLS(c *AMIClient) {
 	c.useTLS = true
 }
 
+//UseTLSConfig
 func UseTLSConfig(config *tls.Config) func(*AMIClient) {
 	return func(c *AMIClient) {
 		c.tlsConfig = config
@@ -86,13 +86,14 @@ func UseTLSConfig(config *tls.Config) func(*AMIClient) {
 	}
 }
 
+//UnsecureTLS
 func UnsecureTLS(c *AMIClient) {
 	c.unsecureTLS = true
 }
 
 // Login authenticate to AMI
 func (client *AMIClient) Login(username, password string) error {
-	response, err := client.Action("Login", Params{"Username": username, "Secret": password})
+	response, err := client.Action(Params{"Action": "Login", "Username": username, "Secret": password})
 	if err != nil {
 		return err
 	}
@@ -103,12 +104,14 @@ func (client *AMIClient) Login(username, password string) error {
 
 	client.amiUser = username
 	client.amiPass = password
+
 	return nil
 }
 
 // Reconnect the session, autologin if a new network error it put on client.NetError
 func (client *AMIClient) Reconnect() error {
 	client.conn.Close()
+
 	err := client.NewConn()
 
 	if err != nil {
@@ -127,35 +130,48 @@ func (client *AMIClient) Reconnect() error {
 
 // AsyncAction return chan for wait response of action with parameter *ActionID* this can be helpful for
 // massive actions,
-func (client *AMIClient) AsyncAction(action string, params Params) (<-chan *AMIResponse, error) {
-	var output string
+func (client *AMIClient) AsyncAction(params Params) (<-chan *AMIResponse, error) {
 	client.mutexAsyncAction.Lock()
 	defer client.mutexAsyncAction.Unlock()
 
-	output = fmt.Sprintf("Action: %s\r\n", strings.TrimSpace(action))
 	if params == nil {
-		params = Params{}
-	}
-	if _, ok := params["ActionID"]; !ok {
-		params["ActionID"] = fmt.Sprintf("%d", time.Now().UnixNano())
+		return nil, errInvalidParams
 	}
 
-	if _, ok := client.response[params["ActionID"]]; !ok {
-		client.response[params["ActionID"]] = make(chan *AMIResponse, 1)
-	}
+	var fixParams Params
 	for k, v := range params {
-		output = output + fmt.Sprintf("%s: %s\r\n", k, strings.TrimSpace(v))
+		k = strings.ToLower(k)
+		fixParams[k] = strings.TrimSpace(v)
 	}
+
+	if _, ok := fixParams["action"]; !ok {
+		return nil, errInvalidParams
+	}
+
+	if _, ok := fixParams["actionid"]; !ok {
+		delete(fixParams, fixParams["actionid"])
+		fixParams["ActionID"] = fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+
+	if _, ok := client.response[fixParams["ActionID"]]; !ok {
+		client.response[fixParams["ActionID"]] = make(chan *AMIResponse, 1)
+	}
+
+	var output string
+	for k, v := range fixParams {
+		output += fmt.Sprintf("%s: %s\r\n", strings.ToTitle(k), v)
+	}
+
 	if err := client.conn.PrintfLine("%s", output); err != nil {
 		return nil, err
 	}
 
-	return client.response[params["ActionID"]], nil
+	return client.response[fixParams["ActionID"]], nil
 }
 
 // Action send with params
-func (client *AMIClient) Action(action string, params Params) (*AMIResponse, error) {
-	resp, err := client.AsyncAction(action, params)
+func (client *AMIClient) Action(params Params) (*AMIResponse, error) {
+	resp, err := client.AsyncAction(params)
 	if err != nil {
 		return nil, err
 	}
@@ -187,7 +203,7 @@ func (client *AMIClient) Run() {
 			}
 
 			if ev, err := newEvent(&data); err != nil {
-				if err != errNotEvent {
+				if err != errNoEvent {
 					client.Error <- err
 				}
 			} else {
@@ -207,7 +223,7 @@ func (client *AMIClient) Run() {
 
 // Close the connection to AMI
 func (client *AMIClient) Close() {
-	client.Action("Logoff", nil)
+	client.Action(Params{"Action": "Logoff"})
 	(client.connRaw).Close()
 }
 
@@ -246,7 +262,7 @@ func newResponse(data *textproto.MIMEHeader) (*AMIResponse, error) {
 //newEvent build event
 func newEvent(data *textproto.MIMEHeader) (*AMIEvent, error) {
 	if data.Get("Event") == "" {
-		return nil, errNotEvent
+		return nil, errNoEvent
 	}
 	ev := &AMIEvent{data.Get("Event"),
 		strings.Split(data.Get("Privilege"), ","),
@@ -307,7 +323,7 @@ func (client *AMIClient) NewConn() (err error) {
 	}
 
 	if strings.Contains(label, "Asterisk Call Manager") != true {
-		return ErrNotAMI
+		return errNoAMI
 	}
 
 	return nil

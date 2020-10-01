@@ -33,7 +33,7 @@ func TestLogin(t *testing.T) {
 	}
 	go ami.Run()
 	defer ami.Close()
-	done := defaultInstaller(t, ami,  3)
+	done := defaultInstaller(t, ami, 3)
 
 	//example mocking login of asterisk
 	srv.Mock("Login", func(params textproto.MIMEHeader) map[string]string {
@@ -66,7 +66,7 @@ func TestMultiAsyncActions(t *testing.T) {
 		for i := 0; i < workers; i++ {
 			wg.Add(1)
 			go func() {
-				chres, err := ami.AsyncAction("Test", nil)
+				chres, err := ami.AsyncAction(Params{"Action": "Test"})
 				if err != nil {
 					t.Error(err)
 				}
@@ -91,24 +91,24 @@ func TestMultiAsyncActions(t *testing.T) {
 	<-done
 }
 
-func defaultInstaller(t *testing.T, ami *AMIClient, timeout int) (<-chan struct{}) {
+func defaultInstaller(t *testing.T, ami *AMIClient, timeout int) <-chan struct{} {
 	wait := make(chan struct{})
-	
+
 	go func() {
 		select {
-			//handle network errors
+		//handle network errors
 		case err := <-ami.NetError:
 			t.Error("Network Error:", err)
 		case err := <-ami.Error:
 			t.Error("error:", err)
-		case <-time.After(time.Second *  time.Duration(timeout)):
+		case <-time.After(time.Second * time.Duration(timeout)):
 		}
 		wait <- struct{}{}
-		
+
 		go func() {
 			for {
 				select {
-					//wait events and process
+				//wait events and process
 				case <-ami.Events:
 					//t.Log("Event:", *ev)
 				}
