@@ -36,7 +36,7 @@ func main() {
 				<-time.After(time.Second)
 				if err := ami.Reconnect(); err == nil {
 					//call start actions
-					ami.Action("Events", gami.Params{"EventMask": "on"})
+					ami.Action(gami.Params{"Action":"Events","EventMask":"on"})
 				}
 				
 			case err := <-ami.Error:
