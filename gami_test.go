@@ -119,7 +119,7 @@ func defaultInstaller(t *testing.T, ami *AMIClient, timeout int) <-chan struct{}
 }
 
 func newAmiServer() *amiServer {
-	addr := "localhost:0"
+	addr := "localhost:5038"
 	listener, err := net.Listen("tcp", addr)
 	if err != nil {
 		panic(err)

@@ -138,7 +138,7 @@ func (client *AMIClient) AsyncAction(params Params) (<-chan *AMIResponse, error)
 		return nil, errInvalidParams
 	}
 
-	var fixParams Params
+	fixParams := make(Params)
 	for k, v := range params {
 		k = strings.ToLower(k)
 		fixParams[k] = strings.TrimSpace(v)
