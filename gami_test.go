@@ -66,7 +66,7 @@ func TestMultiAsyncActions(t *testing.T) {
 		for i := 0; i < workers; i++ {
 			wg.Add(1)
 			go func() {
-				chres, err := ami.AsyncAction(Params{"Action": "Test"})
+				chres, _, err := ami.Action(Params{"Action": "Test"})
 				if err != nil {
 					t.Error(err)
 				}

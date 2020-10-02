@@ -54,18 +54,21 @@ func main() {
 		log.Fatal(err)
 	}
 	
-	
-	if _, errPing := ami.Action(gami.Params{"Action":"Ping"}); errPing != nil {
-		log.Fatal(errPing)
-	}
-	
-	//async actions
-	rsPing, rsErr := ami.AsyncAction(gami.Params{"Action":"Ping","ActionID":"pingo"})
+	// Action method
+	rsPing, rsActioID, rsErr := ami.Action(gami.Params{"Action":"Ping"})
 	if rsErr != nil {
 		log.Fatal(rsErr)
 	}
+
+	// Synchronous response
+	log.Println(<-rsPing)
+
+	// Asynchronous response
+	go func() {
+		log.Println(<-rsPing)
+	}()
 						
-	if _, err := ami.Action(gami.Params{"Action":"Events","EventMask":"on"}); err != nil {
+	if _, _, err := ami.Action(gami.Params{"Action":"Events","EventMask":"on"}); err != nil {
 		log.Fatal(err)
 	}
 	

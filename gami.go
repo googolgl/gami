@@ -93,13 +93,13 @@ func UnsecureTLS(c *AMIClient) {
 
 // Login authenticate to AMI
 func (client *AMIClient) Login(username, password string) error {
-	response, err := client.Action(Params{"Action": "Login", "Username": username, "Secret": password})
+	response, _, err := client.Action(Params{"Action": "Login", "Username": username, "Secret": password})
 	if err != nil {
 		return err
 	}
 
-	if (*response).Status == "Error" {
-		return errors.New((*response).Params["Message"])
+	if (<-response).Status == "Error" {
+		return errors.New((<-response).Params["Message"])
 	}
 
 	client.amiUser = username
@@ -128,56 +128,36 @@ func (client *AMIClient) Reconnect() error {
 	return nil
 }
 
-// AsyncAction return chan for wait response of action with parameter *ActionID* this can be helpful for
+// Action return chan for wait response of action with parameter *ActionID* this can be helpful for
 // massive actions,
-func (client *AMIClient) AsyncAction(params Params) (<-chan *AMIResponse, error) {
+func (client *AMIClient) Action(p Params) (<-chan *AMIResponse, string, error) {
 	client.mutexAsyncAction.Lock()
 	defer client.mutexAsyncAction.Unlock()
 
-	if params == nil {
-		return nil, errInvalidParams
+	if p == nil {
+		return nil, "", errInvalidParams
 	}
 
-	fixParams := make(Params)
-	for k, v := range params {
-		k = strings.ToLower(k)
-		fixParams[k] = strings.TrimSpace(v)
+	client.normaliser(&p)
+
+	if _, ok := p["Action"]; !ok {
+		return nil, "", errInvalidParams
 	}
 
-	if _, ok := fixParams["action"]; !ok {
-		return nil, errInvalidParams
-	}
-
-	if _, ok := fixParams["actionid"]; !ok {
-		delete(fixParams, fixParams["actionid"])
-		fixParams["ActionID"] = fmt.Sprintf("%d", time.Now().UnixNano())
-	}
-
-	if _, ok := client.response[fixParams["ActionID"]]; !ok {
-		client.response[fixParams["ActionID"]] = make(chan *AMIResponse, 1)
+	if _, ok := client.response[p["Actionid"]]; !ok {
+		client.response[p["Actionid"]] = make(chan *AMIResponse, 1)
 	}
 
 	var output string
-	for k, v := range fixParams {
-		output += fmt.Sprintf("%s: %s\r\n", strings.ToTitle(k), v)
+	for k, v := range p {
+		output += fmt.Sprintf("%s: %s\r\n", k, v)
 	}
 
 	if err := client.conn.PrintfLine("%s", output); err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
-	return client.response[fixParams["ActionID"]], nil
-}
-
-// Action send with params
-func (client *AMIClient) Action(params Params) (*AMIResponse, error) {
-	resp, err := client.AsyncAction(params)
-	if err != nil {
-		return nil, err
-	}
-	response := <-resp
-
-	return response, nil
+	return client.response[p["Actionid"]], p["Actionid"], nil
 }
 
 // Run process socket waiting events and responses
@@ -327,4 +307,18 @@ func (client *AMIClient) NewConn() (err error) {
 	}
 
 	return nil
+}
+
+func (client *AMIClient) normaliser(p *Params) {
+	fixp := make(Params)
+	for k, v := range *p {
+		delete(*p, k)
+		fixp[strings.Title(strings.ToLower(k))] = strings.TrimSpace(v)
+	}
+
+	if _, ok := fixp["Actionid"]; !ok {
+		fixp["Actionid"] = fmt.Sprintf("%d", time.Now().UnixNano())
+	}
+
+	*p = fixp
 }
