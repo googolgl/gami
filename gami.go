@@ -98,8 +98,9 @@ func (client *AMIClient) Login(username, password string) error {
 		return err
 	}
 
-	if (<-response).Status == "Error" {
-		return errors.New((<-response).Params["Message"])
+	resp := <-response
+	if resp.Status == "Error" {
+		return errors.New(resp.Params["Message"])
 	}
 
 	client.amiUser = username
